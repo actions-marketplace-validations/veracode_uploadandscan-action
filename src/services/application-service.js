@@ -172,7 +172,7 @@ async function getVeracodeApplicationScanStatus(vid, vkey, veracodeApp, buildId,
   }
 }
 
-async function getVeracodeApplicationFindings(vid, vkey, veracodeApp, buildId, sandboxID, sandboxGUID) {
+async function getVeracodeApplicationFindings(vid, vkey, veracodeApp, buildId, sandboxID, sandboxGUID, platformType) {
   console.log("Starting to fetch results");
   console.log("APP GUID: "+veracodeApp.appGuid)
   console.log("API URL: "+appConfig().findingsUri)
