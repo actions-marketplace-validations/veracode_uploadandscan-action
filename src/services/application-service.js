@@ -172,7 +172,7 @@ async function getVeracodeApplicationScanStatus(vid, vkey, veracodeApp, buildId,
   }
 }
 
-async function getVeracodeApplicationFindings(vid, vkey, veracodeApp, buildId, sandboxID, sandboxGUID) {
+async function getVeracodeApplicationFindings(vid, vkey, veracodeApp, buildId, sandboxID, sandboxGUID, platformType) {
   console.log("Starting to fetch results");
   console.log("APP GUID: "+veracodeApp.appGuid)
   console.log("API URL: "+appConfig().findingsUri)
@@ -238,8 +238,17 @@ async function getVeracodeApplicationFindings(vid, vkey, veracodeApp, buildId, s
     console.log(err);
   }
   
-  const { DefaultArtifactClient } = require('@actions/artifact')
-  const artifactClient = new DefaultArtifactClient();
+  const { DefaultArtifactClient } = require('@actions/artifact');
+  const artifactV1 = require('@actions/artifact-v1');
+  let artifactClient;
+
+  if (platformType === 'ENTERPRISE') {
+    artifactClient = artifactV1.create();
+    core.info(`Initialized the artifact object using version V1.`);
+  } else {
+    artifactClient = new DefaultArtifactClient();
+    core.info(`Initialized the artifact object using version V2.`);
+  }
 
   const artifactName = 'policy-flaws';
   const files = [
