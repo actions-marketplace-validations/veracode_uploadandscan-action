@@ -59,7 +59,7 @@ async function run() {
     return;
 
   if (workflowApp){
-      await executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode,createsandbox);
+      await executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode,createsandbox,failbuild);
       return;
   }  
 

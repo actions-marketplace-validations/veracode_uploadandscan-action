@@ -13,7 +13,7 @@ const { calculateAuthorizationHeader } = require('../api/veracode-hmac.js');
 
 const SCAN_TIME_OUT = 8;
 
-async function executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode, createsandbox) {
+async function executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode, createsandbox,failbuild) {
     core.info(`Getting Veracode Application for Policy Scan: ${appname}`)
     const veracodeApp = await getVeracodeApplicationForPolicyScan(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl);
   if (veracodeApp.appId === -1) {
@@ -101,7 +101,7 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
           core.info(`Running a Policy Scan: ${appname}`);
           //comand for policy scan 
           core.info(`Veracode Policy Scan Created, Build Id: ${version}`);
-          executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode)
+          executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode,failbuild)
         }
       } catch (error) {
         console.log(error)
@@ -111,7 +111,7 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
 
 }
 
-async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode) {
+async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode,failbuild) {
 
     const policyScanCommand = `java -jar ${jarName} -action UploadAndScanByAppId -vid ${vid} -vkey ${vkey} -appid ${veracodeApp.appId} -filepath ${filepath} -version ${version} -scanpollinginterval 30 -autoscan true -scanallnonfataltoplevelmodules true -includenewmodules true -scantimeout 6000 -deleteincompletescan 2`;
     let scan_id  = '';
@@ -137,7 +137,8 @@ async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepa
         vid,
         vkey,
         veracodeApp,
-        scan_id
+        scan_id,
+        failbuild
       );
        
      await getVeracodeApplicationFindings(vid, vkey, veracodeApp, version, sandboxID, sandboxGUID);
@@ -183,7 +184,7 @@ async function getPolicyScanStatus(veracodeApiId, veracodeApiSecret, appGuid, bu
   };
 }
 
-async function checkPolicyScanStatus(vid,vkey,veracodeApp, scan_id) {
+async function checkPolicyScanStatus(vid,vkey,veracodeApp, scan_id,failbuild) {
   let endTime = new Date(new Date().getTime() + appConfig().scanStatusApiTimeout)
     let responseCode = 0;
     let moduleSelectionCount = 0;
