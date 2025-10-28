@@ -12,6 +12,7 @@ const axios = require('axios');
 const { calculateAuthorizationHeader } = require('../api/veracode-hmac.js');
 
 const SCAN_TIME_OUT = 8;
+const POLICY_EVALUATION_FAILED = 9;
 
 async function executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode, createsandbox,failbuild) {
     core.info(`Getting Veracode Application for Policy Scan: ${appname}`)
