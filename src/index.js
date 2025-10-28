@@ -23,6 +23,7 @@ const createsandbox = core.getInput('createsandbox', { required: false });
 const sandboxname = core.getInput('sandboxname', { required: false });
 const gitRepositoryUrl = core.getInput('gitRepositoryUrl', { required: false });
 const platformType = core.getInput('platformType', { required: false });
+const workflowApp = core.getInput('workflowApp', {required: false});
 
 const POLICY_EVALUATION_FAILED = 9;
 const SCAN_TIME_OUT = 8;
