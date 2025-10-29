@@ -279,7 +279,7 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
          '-sandboxname', `${sandboxname}`,
          '-scanallnonfataltoplevelmodules', 'true', 
          '-includenewmodules', 'true', 
-         '-scantimeout', '6000', 
+        //  '-scantimeout', '6000', 
          '-deleteincompletescan', '2'
         ],
       {
