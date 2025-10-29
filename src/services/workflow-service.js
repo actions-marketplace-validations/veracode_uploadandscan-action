@@ -287,14 +287,14 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
       }
     )
     child.on("spawn", () => {
-      setTimeout(() => {
+    //   setTimeout(() => {
         try {
           child.unref(); 
           resolve();
         } catch (err) {
           reject(err);
         }
-      }, 30000); //wait for 30 secs, to trigger the command properly before exiting
+    //   }, 30000); //wait for 30 secs, to trigger the command properly before exiting
     });
 
     child.on("error", (err) => {
