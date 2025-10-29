@@ -65,8 +65,9 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
             core.info(`Veracode Sandbox Created: ${createSandboxResponse.name} / ${createSandboxResponse.guid}`);
             sandboxID = createSandboxResponse.id;
             sandboxGUID = createSandboxResponse.guid;
-            //command to create sandbox scan
+         
             await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
+            core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
             core.info('Static Scan Submitted, please check Veracode Platform for results');
              return;
           }
@@ -77,9 +78,9 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
           }
           else{
             core.info(`Sandbox Found: ${sandboxID} - ${sandboxGUID}`);
-            //command to create sandbox scan
 
             await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
+            core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
             core.info("Static Scan Submitted, please check Veracode Platform for results");
             return;
           }
@@ -101,10 +102,10 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
 async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode,failbuild) {
 
     const policyScanCommand = `java -jar ${jarName} -action UploadAndScanByAppId -vid ${vid} -vkey ${vkey} -appid ${veracodeApp.appId} -filepath ${filepath} -version ${version} -scanpollinginterval 30 -autoscan true -scanallnonfataltoplevelmodules true -includenewmodules true -scantimeout 6000 -deleteincompletescan 2`;
-    let scan_id  = '';
+    let scan_id = "";
     let sandboxID;
-  let sandboxGUID;
-  let output;
+    let sandboxGUID;
+    let output;
     try {
        core.info(`Command to execute the policy scan : ${policyScanCommand}`);
 
@@ -127,9 +128,16 @@ async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepa
         scan_id,
         failbuild
       );
-       
-     await getVeracodeApplicationFindings(vid, vkey, veracodeApp, version, sandboxID, sandboxGUID);
-     return responseCode;
+
+      await getVeracodeApplicationFindings(
+        vid,
+        vkey,
+        veracodeApp,
+        version,
+        sandboxID,
+        sandboxGUID
+      );
+      return responseCode;
     }
 }
 
@@ -171,51 +179,77 @@ async function getPolicyScanStatus(veracodeApiId, veracodeApiSecret, appGuid, bu
   };
 }
 
-async function checkPolicyScanStatus(vid,vkey,veracodeApp, scan_id,failbuild) {
-  let endTime = new Date(new Date().getTime() + appConfig().scanStatusApiTimeout)
-    let responseCode = 0;
-    let moduleSelectionCount = 0;
-    let moduleSelectionStartTime = new Date();
+async function checkPolicyScanStatus(
+  vid,
+  vkey,
+  veracodeApp,
+  scan_id,
+  failbuild
+) {
+  let endTime = new Date(
+    new Date().getTime() + appConfig().scanStatusApiTimeout
+  );
+  let responseCode = 0;
+  let moduleSelectionCount = 0;
+  let moduleSelectionStartTime = new Date();
   while (true) {
     await sleep(appConfig().pollingInterval);
-    core.info('Checking Scan Results...');
-    const statusUpdate = await getPolicyScanStatus(vid, vkey, veracodeApp.appGuid, scan_id);
+    core.info("Checking Scan Results...");
+    const statusUpdate = await getPolicyScanStatus(
+      vid,
+      vkey,
+      veracodeApp.appGuid,
+      scan_id
+    );
     core.info(`Scan Status: ${JSON.stringify(statusUpdate)}`);
-    if (statusUpdate.status === 'MODULE_SELECTION_REQUIRED' || statusUpdate.status === 'PRE-SCAN_SUCCESS') {
+    if (
+      statusUpdate.status === "MODULE_SELECTION_REQUIRED" ||
+      statusUpdate.status === "PRE-SCAN_SUCCESS"
+    ) {
       moduleSelectionCount++;
-      if (moduleSelectionCount === 1)
-        moduleSelectionStartTime = new Date();
-      if (new Date() - moduleSelectionStartTime > appConfig().moduleSelectionTimeout) {
-        core.setFailed('Veracode Policy Scan Exited: Module Selection Timeout Exceeded. ' +
-          'Please review the scan on Veracode Platform.' + 
-          `https://analysiscenter.veracode.com/auth/index.jsp#HomeAppProfile:${veracodeApp.oid}:${veracodeApp.appId}`);
+      if (moduleSelectionCount === 1) moduleSelectionStartTime = new Date();
+      if (
+        new Date() - moduleSelectionStartTime >
+        appConfig().moduleSelectionTimeout
+      ) {
+        core.setFailed(
+          "Veracode Policy Scan Exited: Module Selection Timeout Exceeded. " +
+            "Please review the scan on Veracode Platform." +
+            `https://analysiscenter.veracode.com/auth/index.jsp#HomeAppProfile:${veracodeApp.oid}:${veracodeApp.appId}`
+        );
         responseCode = SCAN_TIME_OUT;
         return responseCode;
       }
     }
-    if ((statusUpdate.status === 'PUBLISHED' || statusUpdate.status == 'RESULTS_READY') && statusUpdate.scanUpdateDate) {
+    if (
+      (statusUpdate.status === "PUBLISHED" ||
+        statusUpdate.status == "RESULTS_READY") &&
+      statusUpdate.scanUpdateDate
+    ) {
       const scanDate = new Date(statusUpdate.scanUpdateDate);
       const policyScanDate = new Date(statusUpdate.lastPolicyScanData);
       if (!policyScanDate || scanDate < policyScanDate) {
-        if ((statusUpdate.passFail === 'DID_NOT_PASS' || statusUpdate.passFail == 'CONDITIONAL_PASS') && failbuild.toLowerCase() === 'true'){
-          core.setFailed('Policy Violation: Veracode Policy Scan Failed');
+        if (
+          (statusUpdate.passFail === "DID_NOT_PASS" ||
+            statusUpdate.passFail == "CONDITIONAL_PASS") &&
+          failbuild.toLowerCase() === "true"
+        ) {
+          core.setFailed("Policy Violation: Veracode Policy Scan Failed");
           responseCode = POLICY_EVALUATION_FAILED;
-        }
-        else
-          core.info(`Policy Evaluation: ${statusUpdate.passFail}`)
+        } else core.info(`Policy Evaluation: ${statusUpdate.passFail}`);
         break;
       } else {
-        core.info(`Policy Evaluation: ${statusUpdate.passFail}`)
+        core.info(`Policy Evaluation: ${statusUpdate.passFail}`);
       }
     }
-    
+
     if (endTime < new Date()) {
       core.setFailed(`Veracode Policy Scan Exited: Scan Timeout Exceeded`);
       responseCode = SCAN_TIME_OUT;
       return responseCode;
     }
   }
-  
+
   return responseCode;
 }
 
@@ -266,7 +300,7 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
          '-includenewmodules', 'true', 
          '-deleteincompletescan', '2'
         ];
-      let output = await runCommand(createSandboxCommand,createSandboxArgumnets)
+      await runCommand(createSandboxCommand,createSandboxArgumnets)
       return;
 }
 
