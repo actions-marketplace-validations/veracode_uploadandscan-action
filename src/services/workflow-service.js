@@ -127,7 +127,7 @@ async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepa
     } catch (error) {
       const stdout = error.stdout?.toString();
       const stderr = error.stderr?.toString();
-      core.info("stdout", stdout);
+      core.info(stdout);
       scan_id = extractValue(
         stdout,
         'The analysis id of the new analysis is "',
@@ -229,7 +229,7 @@ async function checkPolicyScanStatus(vid,vkey,veracodeApp, scan_id,failbuild) {
       return responseCode;
     }
   }
-  responseCode = FINISHED;
+  
   return responseCode;
 }
 
