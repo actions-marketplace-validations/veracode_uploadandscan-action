@@ -2,7 +2,7 @@ const core = require('@actions/core');
 const appConfig = require('../app-cofig.js');
 const { getVeracodeApplicationForPolicyScan, getVeracodeSandboxIDFromProfile, createSandboxRequest, getVeracodeApplicationScanStatus, getVeracodeApplicationFindings
 } = require('./application-service.js');
-const { downloadJar} = require('../api/java-wrapper.js');
+const { downloadJar, runCommand} = require('../api/java-wrapper.js');
 const fs = require('fs');
 const util = require('util');
 const { exec, execFileSync, execSync , spawn} = require('child_process');
@@ -66,14 +66,7 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
             sandboxID = createSandboxResponse.id;
             sandboxGUID = createSandboxResponse.guid;
             //command to create sandbox scan
-            executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
-              .then(() => {
-                core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
-              })
-              .catch((err) => {
-                console.log(err);
-                process.exitCode = 1;
-              });
+            await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
             core.info('Static Scan Submitted, please check Veracode Platform for results');
              return;
           }
@@ -86,14 +79,7 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
             core.info(`Sandbox Found: ${sandboxID} - ${sandboxGUID}`);
             //command to create sandbox scan
 
-             executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
-              .then(() => {
-                core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
-              })
-              .catch((err) => {
-                console.log(err);
-                process.exitCode = 1;
-              });
+            await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
             core.info("Static Scan Submitted, please check Veracode Platform for results");
             return;
           }
@@ -263,10 +249,9 @@ async function getResourceByAttribute(veracodeApiId, veracodeApiSecret, resource
 }
 
 async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(
-      'java', 
-        ['-jar', `${jarName}`,
+  const createSandboxCommand = 'java' ;
+  const createSandboxArgumnets = [
+         '-jar', `${jarName}`,
          '-action', 'UploadAndScanByAppId',
          '-vid', `${vid}`,
          '-vkey', `${vkey}`,
@@ -279,29 +264,10 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
          '-sandboxname', `${sandboxname}`,
          '-scanallnonfataltoplevelmodules', 'true', 
          '-includenewmodules', 'true', 
-        //  '-scantimeout', '6000', 
          '-deleteincompletescan', '2'
-        ],
-      {
-        stdio: "ignore",
-      }
-    )
-    child.on("spawn", () => {
-    //   setTimeout(() => {
-        try {
-         // child.unref(); 
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-    //   }, 30000); //wait for 30 secs, to trigger the command properly before exiting
-    });
-
-    child.on("error", (err) => {
-      console.error("Failed to execute Sandbox Scan", err);
-      reject(err);
-    });
-  });
+        ];
+      let output = await runCommand(createSandboxCommand,createSandboxArgumnets)
+      return;
 }
 
  
