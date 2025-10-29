@@ -289,7 +289,7 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
     child.on("spawn", () => {
     //   setTimeout(() => {
         try {
-          child.unref(); 
+         // child.unref(); 
           resolve();
         } catch (err) {
           reject(err);
