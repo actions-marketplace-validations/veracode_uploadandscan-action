@@ -115,6 +115,7 @@ async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepa
       const stdout = error.stdout?.toString();
       const stderr = error.stderr?.toString();
       core.info(stdout);
+      core.info(stderr)
       scan_id = extractValue(
         stdout,
         'The analysis id of the new analysis is "',
