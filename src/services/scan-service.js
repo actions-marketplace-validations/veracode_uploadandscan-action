@@ -36,8 +36,8 @@ async function createBuild(vid, vkey, jarName, appId, version, deleteincompletes
     }
     else {
       output = await runCommand(createBuildCommand, createBuildArguments);
-      if (output === 'failed') {
-        throw new Error(`Error creating build`);
+      if (output === 'failed'){
+        throw new Error(`Error creating build: ${createOutput}`);
       }
     }
   }
