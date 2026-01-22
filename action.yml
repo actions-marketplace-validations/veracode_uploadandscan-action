@@ -59,6 +59,10 @@ inputs:
     description: 'Specifies the platform environment type — use CLOUD for GitHub.com or ENTERPRISE for GitHub Enterprise Server (GHES).'
     default: 'CLOUD'
     required: false
+  workflowApp:
+    description: 'Specifies whether request is from workflow app'
+    required: false
+    default: 'false'  
 runs:
   using: 'node20'
   main: 'dist/index.js'
