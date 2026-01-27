@@ -23,26 +23,30 @@ async function getApplicationByName(vid, vkey, applicationName) {
   return response;
 }
 
-async function getVeracodeSandboxIDFromProfile(vid, vkey, appguid) {
-  core.debug(`Module: application-service, function: getSandboxIDfromProfile. Application: ${appguid}`);
+async function getVeracodeSandboxIDFromProfile(vid, vkey, appguid, debug) {
+  if (debug)
+    core.debug(`Module: application-service, function: getSandboxIDfromProfile. Application: ${appguid}`);
   const resource = {
     resourceUri: appConfig().applicationUri+"/"+appguid+"/sandboxes"
   };
-  core.debug(resource);
   const response = await getResource(vid, vkey, resource);
+  if (debug)
+    core.debug(response);
   return response;
 }
 
-async function createSandboxRequest(vid, vkey, appguid, sandboxname) {
-  core.debug(`Module: application-service, function: createSandbox. Application: ${appguid}`);
+async function createSandboxRequest(vid, vkey, appguid, sandboxname, debug) {
+  if (debug)
+    core.debug(`Module: application-service, function: createSandbox. Application: ${appguid}`);
   const resource = {
     resourceUri: appConfig().applicationUri+"/"+appguid+"/sandboxes",
     resourceData: {
         name: sandboxname
     }
   };
-  core.debug(resource);
   const response = await createResource(vid, vkey, resource);
+  if (debug)
+    core.debug(response);
   return response;
 }
 
@@ -68,22 +72,27 @@ function profileExists(responseData, applicationName) {
   }
 }
 
-async function getVeracodeApplicationForPolicyScan(vid, vkey, applicationName, policyName, teams, createprofile, gitRepositoryUrl) {
-  core.debug(`Module: application-service, function: getVeracodeApplicationForPolicyScan. Application: ${applicationName}`);
+async function getVeracodeApplicationForPolicyScan(vid, vkey, applicationName, policyName, teams, createprofile, gitRepositoryUrl, debug) {
   const responseData = await getApplicationByName(vid, vkey, applicationName);
-  core.debug(`Check if ${applicationName} is found via Application API`);
-  core.debug(responseData);
+  if (debug) {
+    core.debug(`Module: application-service, function: getVeracodeApplicationForPolicyScan. Application: ${applicationName}`);
+    core.debug(`Check if ${applicationName} is found via Application API`);
+    core.debug(responseData);
+  }
   const profile = profileExists(responseData, applicationName);
-  core.debug(`Check if ${applicationName} has a Veracode application profile`);
+  if (debug)
+    core.debug(`Check if ${applicationName} has a Veracode application profile`);
   // core.debug(profile);
   if (!profile.exists) {
     if (createprofile.toLowerCase() !== 'true')
       return { 'appId': -1, 'appGuid': -1, 'oid': -1 };
     
     const veracodePolicy = await getVeracodePolicyByName(vid, vkey, policyName);
-    core.debug(`Veracode Policy: ${veracodePolicy}`)
+    if (debug)
+      core.debug(`Veracode Policy: ${veracodePolicy}`)
     const veracodeTeams = await getVeracodeTeamsByName(vid, vkey, teams);
-    core.debug(`Veracode Teams: ${veracodeTeams}`);
+    if (debug)
+      core.debug(`Veracode Teams: ${veracodeTeams}`);
     // create a new Veracode application
     const resource = {
       resourceUri: appConfig().applicationUri,
@@ -101,9 +110,11 @@ async function getVeracodeApplicationForPolicyScan(vid, vkey, applicationName, p
         }
       }
     };
-    core.debug(`Create Veracode application profile: ${JSON.stringify(resource)}`);
+    if (debug)
+      core.debug(`Create Veracode application profile: ${JSON.stringify(resource)}`);
     const response = await createResource(vid, vkey, resource);
-    core.debug(`Veracode application profile created: ${JSON.stringify(response)}`);
+    if (debug)
+      core.debug(`Veracode application profile created: ${JSON.stringify(response)}`);
     const appProfile = response.app_profile_url;
     return {
       'appId': response.id,
