@@ -110,9 +110,7 @@ async function executePolicyScan(vid, vkey, veracodeApp, jarName, version, filep
   let output;
   try {
     core.info(`Command to execute the policy scan : ${policyScanCommand}`);
-    const output = execSync(policyScanCommand, { encoding: "utf-8" });
-    if (debug)
-      core.debug(output);
+    execSync(policyScanCommand, { encoding: "utf-8", stdio: 'inherit' });
   } catch (error) {
     const stdout = error.stdout?.toString();
     const stderr = error.stderr?.toString();
