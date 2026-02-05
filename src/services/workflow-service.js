@@ -14,9 +14,9 @@ const { calculateAuthorizationHeader } = require('../api/veracode-hmac.js');
 const SCAN_TIME_OUT = 8;
 const POLICY_EVALUATION_FAILED = 9;
 
-async function executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath,responseCode, createsandbox,failbuild) {
-    core.info(`Getting Veracode Application for Policy Scan: ${appname}`)
-    const veracodeApp = await getVeracodeApplicationForPolicyScan(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl);
+async function executeStaticScans(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, sandboxname, version, filepath, responseCode, createsandbox, failbuild, debug) {
+  core.info(`Getting Veracode Application for Policy Scan: ${appname}`)
+  const veracodeApp = await getVeracodeApplicationForPolicyScan(vid, vkey, appname, policy, teams, createprofile, gitRepositoryUrl, debug);
   if (veracodeApp.appId === -1) {
     core.setFailed(`Veracode application profile Not Found. Please create a profile on Veracode Platform, \
       or set "createprofile" to "true" in the pipeline configuration to automatically create profile.`);
@@ -28,118 +28,123 @@ async function executeStaticScans(vid, vkey, appname, policy, teams, createprofi
   const jarName = await downloadJar();
   let sandboxID;
   let sandboxGUID;
-    const buildId = version;
+  const buildId = version;
 
-    const stat = util.promisify(fs.stat);
+  const stat = util.promisify(fs.stat);
   const stats = await stat(filepath);
 
   if (stats.isFile()) {
     console.log(`${filepath} is a file.`);
-  }else if (stats.isDirectory()) {
+  } else if (stats.isDirectory()) {
     console.log(`${filepath} is a directory.`);
   }
 
-    const artifact = await fs.promises.readdir(filepath);
+  const artifact = await fs.promises.readdir(filepath);
 
-    try {
-        if (sandboxname !== ''){
-          core.info(`Running a Sandbox Scan: '${sandboxname}' on applicaiton: '${appname}'`);
-          const sandboxes = await getVeracodeSandboxIDFromProfile(vid, vkey, veracodeApp.appGuid);
-    
-          core.info('Finding Sandbox ID & GUID');
-          if (sandboxes.page.total_elements !== 0) {
-            for (let i = 0; i < sandboxes._embedded.sandboxes.length; i++){
-              if (sandboxes._embedded.sandboxes[i].name.toLowerCase() === sandboxname.toLowerCase()){
-                sandboxID = sandboxes._embedded.sandboxes[i].id;
-                sandboxGUID = sandboxes._embedded.sandboxes[i].guid
-              }
-              else {
-                core.info(`Not the sandbox (${sandboxes._embedded.sandboxes[i].name}) we are looking for (${sandboxname})`);
-              }
-            }
-          }
-          if ( sandboxID == undefined && createsandbox == 'true'){
-            core.debug(`Sandbox Not Found. Creating Sandbox: ${sandboxname}`);
-            //create sandbox
-            const createSandboxResponse = await createSandboxRequest(vid, vkey, veracodeApp.appGuid, sandboxname);
-            core.info(`Veracode Sandbox Created: ${createSandboxResponse.name} / ${createSandboxResponse.guid}`);
-            sandboxID = createSandboxResponse.id;
-            sandboxGUID = createSandboxResponse.guid;
-         
-            await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
-            core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
-            core.info('Static Scan Submitted, please check Veracode Platform for results');
-             return;
-          }
-          else if ( sandboxID == undefined && createsandbox == 'false'){
-            core.setFailed(`Sandbox Not Found. Please create a sandbox on Veracode Platform, \
-            or set "createsandbox" to "true" in the pipeline configuration to automatically create sandbox.`);
-            return;
-          }
-          else{
-            core.info(`Sandbox Found: ${sandboxID} - ${sandboxGUID}`);
+  try {
+    if (sandboxname !== '') {
+      core.info(`Running a Sandbox Scan: '${sandboxname}' on applicaiton: '${appname}'`);
+      const sandboxes = await getVeracodeSandboxIDFromProfile(vid, vkey, veracodeApp.appGuid, debug);
 
-            await executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname)
-            core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
-            core.info("Static Scan Submitted, please check Veracode Platform for results");
-            return;
+      core.info('Finding Sandbox ID & GUID');
+      if (sandboxes.page.total_elements !== 0) {
+        for (let i = 0; i < sandboxes._embedded.sandboxes.length; i++) {
+          if (sandboxes._embedded.sandboxes[i].name.toLowerCase() === sandboxname.toLowerCase()) {
+            sandboxID = sandboxes._embedded.sandboxes[i].id;
+            sandboxGUID = sandboxes._embedded.sandboxes[i].guid
+          }
+          else {
+            core.info(`Not the sandbox (${sandboxes._embedded.sandboxes[i].name}) we are looking for (${sandboxname})`);
           }
         }
-        else{
-          core.info(`Running a Policy Scan: ${appname}`);
-          //comand for policy scan 
-          core.info(`Veracode Policy Scan Created, Build Id: ${version}`);
-          executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode,failbuild)
-        }
-      } catch (error) {
-        console.log(error)
-        core.setFailed('Failed to create Veracode Scan. App not in state where new builds are allowed.');
+      }
+      if (sandboxID == undefined && createsandbox == 'true') {
+        if (debug)
+          core.debug(`Sandbox Not Found. Creating Sandbox: ${sandboxname}`);
+        //create sandbox
+        const createSandboxResponse = await createSandboxRequest(vid, vkey, veracodeApp.appGuid, sandboxname, debug);
+        core.info(`Veracode Sandbox Created: ${createSandboxResponse.name} / ${createSandboxResponse.guid}`);
+        sandboxID = createSandboxResponse.id;
+        sandboxGUID = createSandboxResponse.guid;
+
+        await executeSandboxScan(vid, vkey, veracodeApp, jarName, version, filepath, responseCode, sandboxID, sandboxGUID, sandboxname, debug)
+        core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
+        core.info('Static Scan Submitted, please check Veracode Platform for results');
         return;
       }
+      else if (sandboxID == undefined && createsandbox == 'false') {
+        core.setFailed(`Sandbox Not Found. Please create a sandbox on Veracode Platform, \
+            or set "createsandbox" to "true" in the pipeline configuration to automatically create sandbox.`);
+        return;
+      }
+      else {
+        core.info(`Sandbox Found: ${sandboxID} - ${sandboxGUID}`);
+        await executeSandboxScan(vid, vkey, veracodeApp, jarName, version, filepath, responseCode, sandboxID, sandboxGUID, sandboxname, debug)
+        core.info(`Veracode Sandbox Scan Created, Build Id: ${version}`);
+        core.info("Static Scan Submitted, please check Veracode Platform for results");
+        return;
+      }
+    }
+    else {
+      core.info(`Running a Policy Scan: ${appname}`);
+      //comand for policy scan 
+      core.info(`Veracode Policy Scan Created, Build Id: ${version}`);
+      executePolicyScan(vid, vkey, veracodeApp, jarName, version, filepath, responseCode, failbuild, debug)
+    }
+  } catch (error) {
+    console.log(error)
+    core.setFailed('Failed to create Veracode Scan. App not in state where new builds are allowed.');
+    return;
+  }
 
 }
 
-async function executePolicyScan(vid, vkey,veracodeApp, jarName, version, filepath,responseCode,failbuild) {
-
-    const policyScanCommand = `java -jar ${jarName} -action UploadAndScanByAppId -vid ${vid} -vkey ${vkey} -appid ${veracodeApp.appId} -filepath ${filepath} -version ${version} -scanpollinginterval 30 -autoscan true -scanallnonfataltoplevelmodules true -includenewmodules true -scantimeout 6000 -deleteincompletescan 2`;
-    let scan_id = "";
-    let sandboxID;
-    let sandboxGUID;
-    let output;
-    try {
-       core.info(`Command to execute the policy scan : ${policyScanCommand}`);
-
-       execSync(policyScanCommand, { encoding: "utf-8" });
-
-    } catch (error) {
-      const stdout = error.stdout?.toString();
-      const stderr = error.stderr?.toString();
-      core.info(stdout);
-      core.info(stderr)
-      scan_id = extractValue(
-        stdout,
-        'The analysis id of the new analysis is "',
-        '"'
-      );
-      core.info("Waiting for Scan Results...");
-      const output1 = await checkPolicyScanStatus(
-        vid,
-        vkey,
-        veracodeApp,
-        scan_id,
-        failbuild
-      );
-
-      await getVeracodeApplicationFindings(
-        vid,
-        vkey,
-        veracodeApp,
-        version,
-        sandboxID,
-        sandboxGUID
-      );
-      return responseCode;
+async function executePolicyScan(vid, vkey, veracodeApp, jarName, version, filepath, responseCode, failbuild, debug) {
+  const debugFlag = debug ? ' -debug' : '';
+  if (debug)
+    core.debug(`Module: workflow-service, function: executePolicyScan. Application: ${veracodeApp.appId}`);
+  const policyScanCommand = `java -jar ${jarName} -action UploadAndScanByAppId -vid ${vid} -vkey ${vkey} -appid ${veracodeApp.appId} -filepath ${filepath} -version ${version} -scanpollinginterval 30 -autoscan true -scanallnonfataltoplevelmodules true -includenewmodules true -scantimeout 6000 -deleteincompletescan 2${debugFlag}`;
+  let scan_id = "";
+  let sandboxID;
+  let sandboxGUID;
+  let output;
+  try {
+    core.info(`Command to execute the policy scan : ${policyScanCommand}`);
+    execSync(policyScanCommand, { encoding: "utf-8" });
+  } catch (error) {
+    const stdout = error.stdout?.toString();
+    const stderr = error.stderr?.toString();
+    if (debug) {
+      core.debug(stdout);
+      core.debug(stderr);
     }
+    scan_id = extractValue(
+      stdout,
+      'The analysis id of the new analysis is "',
+      '"'
+    );
+    core.info("Waiting for Scan Results...");
+    const output1 = await checkPolicyScanStatus(
+      vid,
+      vkey,
+      veracodeApp,
+      scan_id,
+      failbuild
+    );
+
+    if (debug)
+      core.debug(output1);
+
+    await getVeracodeApplicationFindings(
+      vid,
+      vkey,
+      veracodeApp,
+      version,
+      sandboxID,
+      sandboxGUID
+    );
+    return responseCode;
+  }
 }
 
 
@@ -283,7 +288,7 @@ async function getResourceByAttribute(veracodeApiId, veracodeApiSecret, resource
   }
 }
 
-async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath,responseCode,sandboxID,sandboxGUID,sandboxname) {
+async function executeSandboxScan(vid, vkey, veracodeApp, jarName, version, filepath, responseCode, sandboxID, sandboxGUID, sandboxname, debug) {
   const createSandboxCommand = 'java' ;
   const createSandboxArgumnets = [
          '-jar', `${jarName}`,
@@ -301,9 +306,15 @@ async function executeSandboxScan(vid,vkey,veracodeApp,jarName,version, filepath
          '-includenewmodules', 'true', 
          '-deleteincompletescan', '2'
         ];
-      await runCommand(createSandboxCommand,createSandboxArgumnets)
-      return;
+  if (debug) {
+    createSandboxArgumnets.push('-debug');
+    core.debug(`Module: workflow-service, function: executeSandboxScan. Action:UploadAndScanByAppId. Application: ${veracodeApp.appId}`);
+  }
+  const output = await runCommand(createSandboxCommand,createSandboxArgumnets);
+  const outputXML = output.toString();
+  if (debug)
+    core.debug(outputXML);
+  return;
 }
-
  
 module.exports = {executeStaticScans};
